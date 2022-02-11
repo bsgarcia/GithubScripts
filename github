@@ -1,0 +1,47 @@
+#!/usr/bin/bash
+# Creates an online github repo (using current directory name), then inits a local git repo + commit + push
+
+# stop on error
+set -e 
+
+echo 'Creating repo based on current directory name...'
+
+# create the repo on github using dir name
+dir=$(basename $(pwd))
+str='{"name":"'"$dir"'", "description":"Research project"}' 
+response=$(curl -H "Authorization: token REPLACE_BY_YOUR_GITHUB_TOKEN" --data "$str" https://api.github.com/user/repos)
+echo $response
+echo '*****************************************************'
+
+if [[ $response =~ "error" ]]; then
+   echo 'ERROR...abort'
+   exit
+fi
+
+
+if ! command -v jq  &> /dev/null
+then
+    echo "jq could not be found"
+    # Get github username
+    echo -e 'github username: \c'
+    read username
+else
+    
+    # if jq find github username in json response
+    username=$(jq '.owner.login' <<< "$response")
+    username=$( echo "$username" | tr -d '"')
+
+fi
+
+
+echo '[X] CREATED SUCCESSFULLY'
+echo 'Init and push current repo (caution, all files are added)...'
+
+# init git repo and commit+push
+git init
+git add .
+git commit -a -m "first commit"
+git remote add origin https://github.com/$username/$dir.git
+git push --set-upstream origin master
+
+echo '[X] DONE'
